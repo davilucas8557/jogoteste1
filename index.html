@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Semana da Pessoa com Deficiência — Jogo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+<style>
+  :root{
+    --brand:#4f46e5; /* roxo */
+    --brand-2:#06b6d4; /* ciano */
+    --ok:#16a34a; --warn:#f59e0b; --bad:#ef4444;
+    --bg:#0f172a; --paper:#111827;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; font-family:Poppins,system-ui,-apple-system,Segoe UI,Roboto,Arial,Helvetica,sans-serif;
+    background:#0b1022; color:#e5e7eb;
+  }
+  /* ---------- TELA 1 (CAPA) ---------- */
+  .screen{position:fixed; inset:0; display:none; align-items:center; justify-content:center;}
+  .screen.active{display:flex}
+  #screen-start{
+    background:url('capa.jpg') center/cover no-repeat;
+  }
+  .glass{
+    backdrop-filter: blur(4px);
+    background:rgba(15, 23, 42, .55);
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:24px;
+    padding:28px 28px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.35);
+  }
+  .title{
+    font-weight:800; font-size:clamp(26px,4vw,48px); line-height:1.1; color:#fff; text-align:center;
+    text-shadow:0 6px 16px rgba(0,0,0,.4);
+  }
+  .subtitle{opacity:.9; text-align:center; margin-top:6px}
+  .btn{
+    appearance:none; border:0; cursor:pointer; color:white;
+    font-weight:700; padding:16px 28px; border-radius:999px; display:inline-flex; gap:10px; align-items:center;
+    background: linear-gradient(135deg, var(--brand), var(--brand-2));
+    box-shadow:0 10px 24px rgba(79,70,229,.35), inset 0 -2px 0 rgba(255,255,255,.15);
+    transition: transform .18s ease, filter .18s ease, box-shadow .18s ease;
+  }
+  .btn:hover{ transform: scale(1.06); filter:brightness(1.05); box-shadow:0 16px 34px rgba(6,182,212,.35) }
+  .btn:active{ transform: scale(0.98) }
+  .cta{display:flex; gap:14px; margin-top:18px; justify-content:center;}
+
+  /* ---------- TELA 2 (LOGIN) ---------- */
+  #screen-login{
+    background: radial-gradient(1000px 600px at 10% 10%, rgba(79,70,229,.35), transparent 60%),
+                radial-gradient(1000px 600px at 90% 90%, rgba(6,182,212,.35), transparent 60%),
+                conic-gradient(from 120deg at 50% 50%, #0b1535, #0e1a3d, #0b1535);
+  }
+  .form{
+    width:min(560px, 92vw);
+    display:grid; gap:14px;
+  }
+  label{font-size:14px; opacity:.9}
+  .inp, .sel{
+    width:100%; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.07);
+    color:#fff; padding:14px 16px; border-radius:14px; outline:none; font-size:16px;
+    transition: border-color .2s ease, background .2s ease;
+  }
+  .inp::placeholder{color:#cbd5e1}
+  .inp:focus, .sel:focus{border-color:rgba(6,182,212,.8); background:rgba(255,255,255,.1)}
+  .row{display:grid; gap:14px; grid-template-columns:1fr 1fr}
+  .hint{font-size:12px; opacity:.8}
+
+  /* ---------- HUD & DIALOGOS ---------- */
+  #hud{
+    position:fixed; left:50%; transform:translateX(-50%); top:10px; z-index:10;
+    display:flex; gap:12px; align-items:center; padding:10px 14px; border-radius:999px;
+    background:rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.12);
+    font-weight:600; pointer-events:none;
+  }
+  #hud .pill{padding:6px 12px; border-radius:999px; background:rgba(255,255,255,.08)}
+  #hud .ok{background:rgba(22,163,74,.25)}
+  #objective{max-width:min(60vw,900px)}
+
+  #dialog, #mission, #rank{
+    position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:20;
+    background:rgba(10, 13, 26, .45); backdrop-filter: blur(6px);
+  }
+  #dialog.active, #mission.active, #rank.active{display:flex}
+
+  .card{
+    width:min(900px, 94vw); background:#0b1228; border:1px solid rgba(255,255,255,.12);
+    border-radius:20px; padding:18px; box-shadow: 0 20px 50px rgba(0,0,0,.45);
+  }
+  .card h3{margin:0 0 8px 0}
+  .card .row{align-items:center}
+  .choices{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px}
+  .choice{
+    padding:12px 14px; border-radius:14px; border:1px solid rgba(255,255,255,.1);
+    background:#111a36; cursor:pointer; transition:.18s; text-align:left;
+  }
+  .choice:hover{transform:translateY(-2px); background:#11224e}
+  .chips{display:flex; gap:8px; flex-wrap:wrap}
+  .chip{padding:6px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.12); background:#0b1b3f}
+  .bar{height:10px; background:#0c254f; border-radius:999px; overflow:hidden}
+  .bar>i{display:block; height:100%; background:linear-gradient(90deg,var(--brand),var(--brand-2)); width:0%}
+
+  /* ---------- GAME AREA ---------- */
+  #game-wrap{
+    position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+    background:#020617;
+  }
+  #game-wrap.active{display:flex}
+  #game-container{width:min(96vw, 1080px); height: calc(min(96vw,1080px) * 0.5625); border-radius:18px; overflow:hidden;
+    box-shadow: 0 30px 70px rgba(0,0,0,.6); border:1px solid rgba(255,255,255,.08);}
+  /* mini canvas usados nas missões */
+  canvas.mini{background:#0b1330; border-radius:14px; border:1px solid rgba(255,255,255,.12)}
+  /* medalhas */
+  .medal{font-size:22px}
+  .gold{color:#ffd166} .silver{color:#c0cbd7} .bronze{color:#d19866}
+  .rank-list{display:grid; gap:10px; margin-top:10px}
+  .rank-item{display:flex; justify-content:space-between; align-items:center; padding:10px 12px;
+    border-radius:12px; border:1px solid rgba(255,255,255,.08); background:#0c1432}
+</style>
+</head>
+<body>
+
+<!-- ========== TELA 1: CAPA ========== -->
+<section id="screen-start" class="screen active">
+  <div class="glass" style="text-align:center; max-width:880px">
+    <div class="title" id="gameName">Semana da Pessoa com Deficiência</div>
+    <div class="subtitle" id="tagline">Incluir é derrubar barreiras. Respeito, acessibilidade e empatia.</div>
+    <div class="cta">
+      <button class="btn" id="btnStart">Começar</button>
+    </div>
+  </div>
+</section>
+
+<!-- ========== TELA 2: LOGIN ========== -->
+<section id="screen-login" class="screen">
+  <div class="glass" style="width:min(720px,92vw)">
+    <h2 style="margin:0 0 8px 0">Antes de começar</h2>
+    <p class="hint" style="margin-top:-4px">Preencha seus dados para registrar sua pontuação no ranking.</p>
+    <div class="form">
+      <div>
+        <label for="inpNome">Seu nome</label>
+        <input id="inpNome" class="inp" placeholder="Ex.: Davi Santos" maxlength="40">
+      </div>
+      <div class="row">
+        <div>
+          <label for="selTipo">Você é</label>
+          <select id="selTipo" class="sel">
+            <option value="">Selecione…</option>
+            <option value="professor">Professor(a)</option>
+            <option value="aluno">Aluno(a)</option>
+          </select>
+        </div>
+        <div id="boxTurma" style="display:none">
+          <label for="selTurma">Turma</label>
+          <select id="selTurma" class="sel">
+            <option value="">Selecione…</option>
+            <option>1 A TDS</option><option>1 B TDS</option>
+            <option>1 A LOGISTICA</option><option>1 A ADIMINISTRAÇÃO</option>
+            <option>2 A TDS</option><option>2 B TDS</option>
+            <option>2 A LOGISTICA</option><option>2 B LOGISTICA</option>
+            <option>3 A TDS</option><option>3 B TDS</option>
+            <option>3 A LOGISTICA</option><option>3 B LOGISTICA</option>
+          </select>
+        </div>
+      </div>
+      <div class="cta" style="justify-content:flex-end">
+        <button class="btn" id="btnLogin" disabled>Prosseguir</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== HUD ========= -->
+<div id="hud" style="display:none">
+  <span class="pill">👤 <b id="hudName">—</b></span>
+  <span class="pill">🏫 <b id="hudClass">—</b></span>
+  <span class="pill ok">⭐ Pontos: <b id="hudScore">0</b></span>
+  <span class="pill" id="objective">Objetivo: fale com Gabriel (👦)</span>
+</div>
+
+<!-- ========== GAME CANVAS WRAPPER ========== -->
+<section id="game-wrap">
+  <div id="game-container"></div>
+</section>
+
+<!-- ========== DIALOGO RÁPIDO ========= -->
+<section id="dialog">
+  <div class="card">
+    <div class="row">
+      <div style="display:flex; align-items:center; gap:10px">
+        <div id="dialogAvatar">🙂</div>
+        <h3 id="dialogTitle" style="margin:0">Diálogo</h3>
+      </div>
+      <div style="margin-left:auto" class="chips"><span class="chip" id="dialogWho">—</span></div>
+    </div>
+    <p id="dialogText" style="margin:8px 0 14px 0"></p>
+    <div style="display:flex; gap:10px; justify-content:flex-end">
+      <button class="btn" id="btnDialogOk">Continuar</button>
+    </div>
+  </div>
+</section>
+
+<!-- ========== MISSÕES (CONTEÚDO DINÂMICO) ========= -->
+<section id="mission">
+  <div class="card" id="missionCard">
+    <!-- conteúdo é construído via JS conforme a missão -->
+  </div>
+</section>
+
+<!-- ========== RANKING FINAL ========= -->
+<section id="rank">
+  <div class="card">
+    <h2 style="margin:0 0 4px 0">🏁 Ranking Geral</h2>
+    <p class="hint" style="margin:0 0 10px 0">Inclusão não é doença — é uma condição humana. Acolher é transformar.</p>
+    <div class="rank-list" id="rankList"></div>
+    <div class="cta" style="justify-content:flex-end">
+      <button class="btn" id="btnPlayAgain">Jogar de novo</button>
+    </div>
+  </div>
+</section>
+
+<script>
+/* =========================
+   VARS GLOBAIS DE ESTADO
+========================= */
+let G = {
+  player:{ name:'', tipo:'', turma:'', score:0, finished: false },
+  missionState: { m1:false,m2:false,m3:false,m4:false,m5:false,m6:false },
+  objectiveQueue: [
+    'Objetivo: fale com Gabriel (👦)',
+    'Objetivo: fale com Tia Joana (👩‍🏫)',
+    'Objetivo: vá até a Estante de livros (📚)',
+    'Objetivo: converse com Ana (👩‍🦽)',
+    'Objetivo: missão extra 1 (Etiqueta Inclusiva)',
+    'Objetivo: missão extra 2 (Revisão final)',
+  ],
+  currentObjectiveIndex: 0,
+  game:null, scene:null, cursors:null, clickMove:false
+};
+
+/* =========================
+   FLUXO DE TELAS INICIAIS
+========================= */
+const q = sel => document.querySelector(sel);
+const qa = sel => document.querySelectorAll(sel);
+
+q('#btnStart').onclick = () => {
+  q('#screen-start').classList.remove('active');
+  q('#screen-login').classList.add('active');
+};
+
+q('#selTipo').onchange = (e)=>{
+  const v = e.target.value;
+  q('#boxTurma').style.display = (v==='aluno')?'block':'none';
+  validateLogin();
+};
+q('#inpNome').oninput = validateLogin;
+q('#selTurma').onchange = validateLogin;
+
+function validateLogin(){
+  const nome = q('#inpNome').value.trim();
+  const tipo = q('#selTipo').value;
+  const turma = q('#selTurma').value;
+  let ok = (nome && tipo);
+  if(tipo==='aluno') ok = ok && !!turma;
+  q('#btnLogin').disabled = !ok;
+}
+
+q('#btnLogin').onclick = ()=>{
+  G.player.name = q('#inpNome').value.trim();
+  G.player.tipo = q('#selTipo').value;
+  G.player.turma = (G.player.tipo==='aluno')? q('#selTurma').value : '—';
+  // abrir jogo
+  q('#screen-login').classList.remove('active');
+  q('#game-wrap').classList.add('active');
+  q('#hud').style.display='flex';
+  q('#hudName').textContent = G.player.name;
+  q('#hudClass').textContent = G.player.turma;
+  q('#objective').textContent = G.objectiveQueue[0];
+  bootPhaser();
+};
+
+/* =========================
+   FERRAMENTAS UI
+========================= */
+function showDialog({avatar='🙂', title='Diálogo', who='—', text='...', btn='Continuar'}){
+  q('#dialogAvatar').textContent = avatar;
+  q('#dialogTitle').textContent = title;
+  q('#dialogWho').textContent = who;
+  q('#dialogText').innerHTML = text;
+  q('#btnDialogOk').textContent = btn;
+  q('#dialog').classList.add('active');
+  return new Promise(res=>{
+    q('#btnDialogOk').onclick = ()=> { q('#dialog').classList.remove('active'); res(); };
+  });
+}
+function showMission(html){
+  q('#missionCard').innerHTML = html;
+  q('#mission').classList.add('active');
+}
+function closeMission(){ q('#mission').classList.remove('active'); }
+function addScore(n){ G.player.score = Math.max(0, G.player.score + n); q('#hudScore').textContent = G.player.score; }
+function nextObjective(){
+  G.currentObjectiveIndex = Math.min(G.objectiveQueue.length-1, G.currentObjectiveIndex+1);
+  q('#objective').textContent = G.objectiveQueue[G.currentObjectiveIndex];
+}
+
+/* =========================
+   JOGO (PHASER)
+========================= */
+function bootPhaser(){
+  const config = {
+    type: Phaser.AUTO,
+    width: 1024, height: 576, parent: 'game-container',
+    physics:{ default:'arcade', arcade:{ debug:false } },
+    scene:{ preload, create, update }
+  };
+  G.game = new Phaser.Game(config);
+
+  function preload(){
+    this.load.image('room','sala.jpg'); // sua 2ª imagem
+  }
+  function makeDaviFrames(scene){
+    // gera por código os frames do Davi (cabelo castanho, pele clara, olhos castanhos)
+    const mk = (key, eyeY=16, mouth='smile', dir='down', step=0)=>{
+      const g = scene.make.graphics({x:0,y:0, add:false});
+      g.fillStyle(0xeec39a,1); // pele
+      g.fillEllipse(16,16,22,26); // cabeça
+      // cabelo castanho cacheado curto
+      g.fillStyle(0x5a3825,1);
+      g.fillCircle(10,6,6); g.fillCircle(16,5,6); g.fillCircle(22,6,6);
+      g.fillCircle(8,10,5); g.fillCircle(24,10,5);
+      // olhos castanhos
+      g.fillStyle(0x4b2e1e,1);
+      if(dir==='left'){ g.fillCircle(12,eyeY,2); g.fillCircle(8,eyeY,2); }
+      else if(dir==='right'){ g.fillCircle(20,eyeY,2); g.fillCircle(24,eyeY,2); }
+      else { g.fillCircle(12,eyeY,2); g.fillCircle(20,eyeY,2); }
+      // boca
+      g.lineStyle(2,0x3b1f12,1);
+      if(mouth==='smile'){ g.strokeCircle(16,22,4); }
+      if(mouth==='doubt'){ g.beginPath(); g.moveTo(12,22); g.lineTo(20,22); g.strokePath(); }
+      // corpo simples
+      const bodyY = 30;
+      g.fillStyle(0x3a60e5,1); // camiseta azul
+      g.fillRect(8, bodyY, 16, 16);
+      g.fillStyle(0x111111,1); // calça
+      g.fillRect(10, bodyY+16, 12, 10);
+      // pés alternando
+      g.fillStyle(0xffffff,1);
+      if(step%2===0){ g.fillRect(10, bodyY+26, 6, 3); g.fillRect(16, bodyY+26, 6, 3); }
+      else { g.fillRect(12, bodyY+26, 6, 3); g.fillRect(18, bodyY+26, 6, 3); }
+      g.generateTexture(key, 32, 48); g.destroy();
+    };
+    // frames básicos
+    ['down','up','left','right'].forEach(dir=>{
+      mk(`davi_${dir}_0`,16,'smile',dir,0);
+      mk(`davi_${dir}_1`,16,'smile',dir,1);
+    });
+    mk('davi_doubt',16,'doubt','down',0);
+    mk('davi_happy',16,'smile','down',0);
+  }
+  function makeNpc(scene,key,color,withWheel=false){
+    const g = scene.make.graphics({x:0,y:0,add:false});
+    g.fillStyle(color,1); g.fillEllipse(16,16,22,26); // cabeça
+    g.fillStyle(0xffffff,1); g.fillRect(8,30,16,16); // corpo
+    if(withWheel){ // cadeira de rodas simples
+      g.lineStyle(3,0x888888,1);
+      g.strokeCircle(26,40,10);
+      g.lineStyle(2,0x888888,1); g.beginPath(); g.moveTo(20,38); g.lineTo(26,40); g.strokePath();
+    }
+    g.generateTexture(key,32,48); g.destroy();
+  }
+
+  let player, npcs={};
+  function create(){
+    G.scene = this;
+    this.add.image(512,288,'room').setDisplaySize(1024,576); // fundo
+
+    makeDaviFrames(this);
+    makeNpc(this,'npc_gabriel',0xffb703,false);
+    makeNpc(this,'npc_joana',0x93c5fd,false);
+    makeNpc(this,'npc_ana',0xf472b6,true);
+    makeNpc(this,'npc_livros',0x34d399,false);
+
+    // NPCs posicionados
+    npcs.gabriel = makeNpcSprite(this, 'npc_gabriel', 220, 380, 'Gabriel');
+    npcs.joana   = makeNpcSprite(this, 'npc_joana',   520, 160, 'Tia Joana');
+    npcs.ana     = makeNpcSprite(this, 'npc_ana',     820, 360, 'Ana');
+    npcs.livros  = makeNpcSprite(this, 'npc_livros',  920, 140, 'Estante');
+
+    // Player (Davi)
+    player = this.physics.add.sprite(120, 460, 'davi_down_0');
+    player.setCollideWorldBounds(true);
+    player.setDepth(10);
+
+    // Animações
+    mkAnim(this,'walk_down',['davi_down_0','davi_down_1']);
+    mkAnim(this,'walk_up',['davi_up_0','davi_up_1']);
+    mkAnim(this,'walk_left',['davi_left_0','davi_left_1']);
+    mkAnim(this,'walk_right',['davi_right_0','davi_right_1']);
+
+    // Controles
+    G.cursors = this.input.keyboard.createCursorKeys();
+    this.input.on('pointerdown', (p)=> { G.clickMove = {x:p.x,y:p.y}; });
+
+    // Clique no NPC faz o Davi ir até ele
+    Object.values(npcs).forEach(n=>{
+      n.setInteractive({useHandCursor:true});
+      n.on('pointerdown', ()=> moveTo(player, n.x, n.y-12));
+    });
+
+    // Overlaps para abrir missões
+    Object.entries(npcs).forEach(([key,n])=>{
+      const zone = this.add.zone(n.x, n.y, 40, 50);
+      this.physics.world.enable(zone);
+      this.physics.add.overlap(player, zone, ()=> reachedNpc(key), null, this);
+    });
+
+    // Boas-vindas
+    showDialog({
+      avatar:'🙂', title:'Bem-vindo(a)!', who:G.player.name,
+      text:`Seu objetivo é concluir <b>6 missões</b> na sala. Ande com as <b>setas do teclado</b> ou <b>clique</b> em um personagem/objeto para o Davi ir até lá. Cada erro tira pontos. Boa sorte!`
+    });
+  }
+
+  function update(){
+    if(!player) return;
+    const speed = 140;
+    player.setVelocity(0);
+
+    if(G.cursors.left.isDown){ player.setVelocityX(-speed); player.anims.play('walk_left', true); }
+    else if(G.cursors.right.isDown){ player.setVelocityX(speed); player.anims.play('walk_right', true); }
+
+    if(G.cursors.up.isDown){ player.setVelocityY(-speed); if(!G.cursors.left.isDown && !G.cursors.right.isDown) player.anims.play('walk_up', true); }
+    else if(G.cursors.down.isDown){ player.setVelocityY(speed); if(!G.cursors.left.isDown && !G.cursors.right.isDown) player.anims.play('walk_down', true); }
+
+    if(player.body.velocity.length()===0){
+      player.anims.stop();
+    }
+
+    // Clique para mover
+    if(G.clickMove){
+      this.physics.moveTo(player, G.clickMove.x, G.clickMove.y, speed);
+      if(Phaser.Math.Distance.Between(player.x,player.y,G.clickMove.x,G.clickMove.y) < 8){
+        player.body.setVelocity(0);
+        G.clickMove = false;
+      }
+    }
+  }
+
+  // helpers
+  function mkAnim(scene, key, frames){
+    scene.anims.create({ key, frames: frames.map(f=>({key:f})), frameRate:6, repeat:-1 });
+  }
+  function makeNpcSprite(scene, key, x, y, label){
+    const s = scene.add.sprite(x,y,key).setDepth(9);
+    const tag = scene.add.text(x, y+32, label, {fontFamily:'Poppins',fontSize:'12px', color:'#fff'}).setOrigin(.5,0);
+    return s;
+  }
+  function moveTo(sprite, x, y){
+    G.scene.physics.moveTo(sprite, x, y, 160);
+  }
+}
+
+/* =========================
+   INTERAÇÕES COM NPCs
+========================= */
+async function reachedNpc(key){
+  // evita abrir 2x a mesma missão se já concluída
+  if(key==='gabriel' && !G.missionState.m1){
+    await showDialog({
+      avatar:'😄', title:'Gabriel', who:'Amigo',
+      text:`Hoje é um dia especial! Vamos falar de <b>acessibilidade e respeito</b>. Primeiro, um <b>quiz</b> rápido!`
+    });
+    mission_quiz_basico();
+  }
+  else if(key==='joana' && !G.missionState.m2){
+    await showDialog({
+      avatar:'👩‍🏫', title:'Tia Joana', who:'Professora',
+      text:`Comunicação inclusiva é essencial. Topa um jogo de <b>memória de sinais (estilo Libras)</b>? Reproduza a sequência!`
+    });
+    mission_libras_simon();
+  }
+  else if(key==='livros' && !G.missionState.m3){
+    await showDialog({
+      avatar:'📚', title:'Estante de Livros', who:'Biblioteca',
+      text:`Aqui você encontra recursos sobre braille e visão reduzida. São <b>duas partes</b>: 1) <b>associar braille</b> e 2) <b>navegar com visão desfocada</b>.`
+    });
+    mission_braille().then(()=> mission_visao_desfocada());
+  }
+  else if(key==='ana' && !G.missionState.m4){
+    await showDialog({
+      avatar:'👩‍🦽', title:'Ana', who:'Colega',
+      text:`Nem sempre o caminho é acessível. Vamos de <b>desafio da cadeira de rodas</b>: encontre a rota com <b>rampa</b> e chegue à carteira.`
+    });
+    mission_cadeira_de_rodas();
+  }
+}
+
+/* =========================
+   MISSÃO 1 — QUIZ BÁSICO
+========================= */
+function mission_quiz_basico(){
+  const qzs = [
+    {q:'O Dia da Pessoa com Deficiência tem como objetivo principal:', a:['Promover inclusão e respeito.','Separar por tipo de deficiência.','Impedir participação social.','Envergonhar quem precisa de apoio.'], ok:0},
+    {q:'Acessibilidade é:', a:['Um favor que a gente faz.','Direito e condição para participação de todos.','Coisa só para escolas.','Algo caro e dispensável.'], ok:1},
+    {q:'Qual atitude é inclusiva?', a:['Falar pela pessoa sem perguntar.','Tratar todos com respeito e perguntar como ajudar.','Ignorar quem tem deficiência.','Rir de limitações.'], ok:1},
+  ];
+  let i=0, total=60, wrong=0;
+  const ui = ()=> {
+    showMission(`
+      <div class="row"><h3>🧠 Quiz — Inclusão e Respeito</h3><div style="margin-left:auto" class="chips"><span class="chip">Valendo até <b>${total} pts</b></span></div></div>
+      <p><b>${i+1}/${qzs.length}</b> — ${qzs[i].q}</p>
+      <div class="choices">
+        ${qzs[i].a.map((txt,idx)=>`<button class="choice" data-idx="${idx}">${['A','B','C','D'][idx]}) ${txt}</button>`).join('')}
+      </div>
+    `);
+    qAll('.choice').forEach(b=>b.onclick=()=>{
+      if(Number(b.dataset.idx)===qzs[i].ok){ i++;
+        if(i>=qzs.length){
+          addScore(total);
+          closeMission();
+          G.missionState.m1=true; nextObjective();
+          showDialog({avatar:'😄',title:'Mandou bem!',who:'Gabriel',text:`Quiz concluído! Pontos somados: <b>${total}</b>. Próximo passo: <b>fale com Tia Joana</b> (👩‍🏫).`});
+        } else ui();
+      } else {
+        wrong++; total = Math.max(0,total-10);
+        b.style.borderColor='var(--bad)'; b.style.background='#2a1120';
+      }
+    });
+  };
+  ui();
+}
+
+/* =========================
+   MISSÃO 2 — LIBRAS (SIMON)
+========================= */
+function mission_libras_simon(){
+  // ícones (não são Libras reais; é um jogo de sequência para simular comunicação visual)
+  const signs = ['🤟','🖐️','👍','☝️'];
+  let seq=[], user=[], round=1, max=5, scoreMax=100, points=100, lock=false;
+
+  const playSeq = async ()=>{
+    lock=true; user=[];
+    await sleep(400);
+    for(let s of seq){
+      highlight(s); await sleep(600);
+    }
+    lock=false;
+  };
+  const nextRound = async ()=>{
+    seq.push(signs[Math.floor(Math.random()*signs.length)]);
+    q('#mTitle').textContent = `Rodada ${round}/${max}`;
+    await playSeq();
+  };
+  const highlight = (s)=>{
+    const el = [...qAll('.sgn')].find(e=>e.textContent===s);
+    el.style.filter='brightness(1.5)';
+    setTimeout(()=> el.style.filter='', 350);
+  };
+
+  showMission(`
+    <div class="row">
+      <h3 id="mTitle">Linguagem de sinais — Memória visual</h3>
+      <div class="chips" style="margin-left:auto">
+        <span class="chip">Sequência</span><span class="chip">Máx <b>${scoreMax} pts</b> (erros -10)</span>
+      </div>
+    </div>
+    <p>Observe a sequência de gestos e <b>reproduza</b>. Clique nos ícones abaixo na mesma ordem.</p>
+    <div class="choices" style="grid-template-columns:repeat(4,1fr); font-size:28px">
+      ${signs.map(s=>`<button class="choice sgn" style="text-align:center;font-size:32px">${s}</button>`).join('')}
+    </div>
+    <div style="margin-top:12px" class="bar"><i id="barProg"></i></div>
+    <div class="cta" style="justify-content:flex-end"><button id="btnGiveup" class="btn" style="background:#1f2937">Desistir</button></div>
+  `);
+
+  qAll('.sgn').forEach(btn=>btn.onclick=()=>{
+    if(lock) return;
+    const s = btn.textContent;
+    user.push(s); highlight(s);
+    const idx = user.length-1;
+    if(user[idx] !== seq[idx]){
+      points=Math.max(0, points-10);
+      flash('#ff4d6d');
+      user=[];
+    } else {
+      const p = Math.min(100, Math.floor((round-1 + user.length)/max*100));
+      q('#barProg').style.width = p+'%';
+      if(user.length === seq.length){
+        if(round>=max){
+          // acabou
+          addScore(points);
+          closeMission();
+          G.missionState.m2=true; nextObjective();
+          showDialog({avatar:'👩‍🏫', title:'Excelente!', who:'Tia Joana', text:`Comunicação é sobre <b>atenção e respeito</b>. Você ganhou <b>${points} pts</b>. Próximo: <b>Estante de livros</b> (📚).`});
+        } else { round++; nextRound(); }
+      }
+    }
+  });
+  q('#btnGiveup').onclick=()=>{ closeMission(); };
+
+  // inicia
+  nextRound();
+
+  function flash(c){ document.querySelector('#missionCard').animate([{boxShadow:`0 0 0 rgba(0,0,0,0)`},{boxShadow:`0 0 0 6px ${c}33`}],{duration:220}); }
+}
+
+/* =========================
+   MISSÃO 3a — BRAILLE (ASSOCIAÇÃO)
+========================= */
+function mission_braille(){
+  return new Promise(res=>{
+    const items = [
+      {b:'⠁', l:'A'}, {b:'⠃', l:'B'}, {b:'⠉', l:'C'}
+    ];
+    let left = [...items].sort(()=>Math.random()-.5);
+    let right = [...items].sort(()=>Math.random()-.5);
+    let matched = 0, total=60, wrong=0;
+
+    showMission(`
+      <div class="row">
+        <h3>📚 Braille — Associe símbolo e letra</h3>
+        <div class="chips" style="margin-left:auto"><span class="chip">Máx <b>${total} pts</b> (erros -10)</span></div>
+      </div>
+      <div class="row">
+        <div style="display:grid;gap:8px">
+          ${left.map((it,i)=>`<button class="choice braille" data-b="${it.b}" style="font-size:26px">${it.b}</button>`).join('')}
+        </div>
+        <div style="display:grid;gap:8px">
+          ${right.map((it,i)=>`<button class="choice letter" data-l="${it.l}">${it.l}</button>`).join('')}
+        </div>
+      </div>
+      <div class="cta" style="justify-content:flex-end"><button class="btn" id="btnBrailleOk" disabled>Confirmar par</button></div>
+    `);
+
+    let selB=null, selL=null;
+    qAll('.braille').forEach(b=>b.onclick=()=>{ qAll('.braille').forEach(x=>x.style.outline=''); selB=b; b.style.outline='2px solid var(--brand)'; updateBtn(); });
+    qAll('.letter').forEach(b=>b.onclick=()=>{ qAll('.letter').forEach(x=>x.style.outline=''); selL=b; b.style.outline='2px solid var(--brand-2)'; updateBtn(); });
+    function updateBtn(){ q('#btnBrailleOk').disabled = !(selB && selL); }
+    q('#btnBrailleOk').onclick=()=>{
+      const b = selB.dataset.b; const l = selL.dataset.l;
+      const hit = items.find(it=>it.b===b && it.l===l);
+      if(hit){ matched++;
+        selB.disabled=true; selL.disabled=true;
+        selB.style.background='#0c2a1a'; selL.style.background='#0c2a1a';
+        selB.style.borderColor='rgba(0,0,0,0)'; selL.style.borderColor='rgba(0,0,0,0)';
+      } else { wrong++; total=Math.max(0,total-10); bop(); }
+      selB=null; selL=null; updateBtn();
+      if(matched===items.length){
+        addScore(total); closeMission();
+        G.missionState.m3=true; // metade concluída (parte a)
+        // não chama nextObjective ainda — parte b virá agora
+        showDialog({avatar:'📚', title:'Boa!', who:'Estante', text:`Associação concluída! Pontos: <b>${total}</b>. Agora vamos simular <b>visão desfocada</b>. Alcance o livro brilhante!`}).then(()=>res());
+      }
+    };
+    function bop(){ document.querySelector('#missionCard').animate([{transform:'translateX(0)'},{transform:'translateX(-6px)'},{transform:'translateX(6px)'},{transform:'translateX(0)'}],{duration:180}); }
+  });
+}
+
+/* =========================
+   MISSÃO 3b — VISÃO DESFOCADA (NAVEGAR)
+========================= */
+function mission_visao_desfocada(){
+  // mini canvas: mover bolinha até alvo com blur global
+  showMission(`
+    <div class="row">
+      <h3>👓 Visão desfocada — Encontre o livro</h3>
+      <div class="chips" style="margin-left:auto"><span class="chip">Máx <b>40 pts</b></span></div>
+    </div>
+    <p>A tela estará desfocada. Use as teclas <b>WASD</b> ou <b>setas</b> para levar o ponto até o <b>quadrado brilhante</b>.</p>
+    <div style="display:flex; justify-content:center; margin:10px 0"><canvas id="cvBlur" class="mini" width="520" height="300" style="filter:blur(3px) contrast(1.05)"></canvas></div>
+    <div class="cta" style="justify-content:flex-end"><button class="btn" id="btnEndBlur" disabled>Concluir</button></div>
+  `);
+  const cv = q('#cvBlur'), ct = cv.getContext('2d');
+  let p = {x:40,y:150}, goal={x:460,y:80,w:34,h:34}, pressed={}; let done=false, pts=40;
+  document.onkeydown=(e)=>{ pressed[e.key]=true; };
+  document.onkeyup=(e)=>{ pressed[e.key]=false; };
+  const step = ()=>{
+    if(done) return;
+    if(pressed.ArrowLeft||pressed.a) p.x-=2.4;
+    if(pressed.ArrowRight||pressed.d) p.x+=2.4;
+    if(pressed.ArrowUp||pressed.w) p.y-=2.4;
+    if(pressed.ArrowDown||pressed.s) p.y+=2.4;
+    p.x=Math.max(10,Math.min(cv.width-10,p.x));
+    p.y=Math.max(10,Math.min(cv.height-10,p.y));
+    // render
+    ct.fillStyle='#06102e'; ct.fillRect(0,0,cv.width,cv.height);
+    // obstáculos leves
+    ct.fillStyle='#0e2a5b'; ct.fillRect(120,0,22,200); ct.fillRect(280,120,22,180);
+    // objetivo brilhante
+    const grd = ct.createLinearGradient(goal.x,goal.y,goal.x+goal.w,goal.y+goal.h);
+    grd.addColorStop(0,'#0ea5e9'); grd.addColorStop(1,'#22d3ee'); ct.fillStyle=grd;
+    ct.fillRect(goal.x,goal.y,goal.w,goal.h);
+    // player
+    ct.beginPath(); ct.arc(p.x,p.y,8,0,Math.PI*2); ct.fillStyle='#facc15'; ct.fill();
+    if(p.x>goal.x && p.x<goal.x+goal.w && p.y>goal.y && p.y<goal.y+goal.h){
+      done=true; q('#btnEndBlur').disabled=false;
+    }
+    if(!done) requestAnimationFrame(step);
+  };
+  step();
+  q('#btnEndBlur').onclick=()=>{
+    addScore(pts); closeMission(); nextObjective();
+    showDialog({avatar:'📚', title:'Parabéns!', who:'Estante', text:`Você concluiu a simulação de visão desfocada e ganhou <b>${pts} pts</b>. Agora, converse com <b>Ana</b> (👩‍🦽).`});
+  };
+}
+
+/* =========================
+   MISSÃO 4 — ACESSO EM CADEIRA DE RODAS
+========================= */
+function mission_cadeira_de_rodas(){
+  showMission(`
+    <div class="row">
+      <h3>♿ Desafio da acessibilidade</h3>
+      <div class="chips" style="margin-left:auto"><span class="chip">Máx <b>70 pts</b> (erros -10)</span></div>
+    </div>
+    <p>Conduza a cadeira até a carteira usando um caminho acessível (rampa). Use as <b>setas</b>.</p>
+    <div style="display:flex; justify-content:center; margin:10px 0"><canvas id="cvWheel" class="mini" width="560" height="320"></canvas></div>
+    <div class="cta" style="justify-content:flex-end"><button class="btn" id="btnEndWheel" disabled>Concluir</button></div>
+  `);
+  const cv = q('#cvWheel'), ctx=cv.getContext('2d');
+  let k={}; document.onkeydown=e=>k[e.key]=true; document.onkeyup=e=>k[e.key]=false;
+  let p={x:40,y:260}, pts=70, done=false;
+  const ramp={x:200,y:220,w:120,h:20, angle: -20}; // rampa leve
+  const stairs1={x:360,y:210,w:20,h:110}; // "escada" muro
+  const goal={x:500,y:40,w:36,h:28};
+
+  function draw(){
+    ctx.clearRect(0,0,cv.width,cv.height);
+    // piso
+    ctx.fillStyle='#0a1b3e'; ctx.fillRect(0,0,cv.width,cv.height);
+    // rampa
+    ctx.save();
+    ctx.translate(ramp.x, ramp.y); ctx.rotate(ramp.angle*Math.PI/180);
+    ctx.fillStyle='#14532d'; ctx.fillRect(0,0,ramp.w,ramp.h);
+    ctx.restore();
+    // escadas/bloqueios
+    ctx.fillStyle='#3f1d1d'; ctx.fillRect(stairs1.x, stairs1.y, stairs1.w, stairs1.h);
+    // carteira (objetivo)
+    ctx.fillStyle='#0ea5e9'; ctx.fillRect(goal.x,goal.y,goal.w,goal.h);
+
+    // cadeira (player)
+    ctx.fillStyle='#9ca3af'; ctx.beginPath(); ctx.arc(p.x,p.y,8,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle='#9ca3af'; ctx.beginPath(); ctx.arc(p.x+10,p.y+8,6,0,Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(p.x-10,p.y+8,6,0,Math.PI*2); ctx.stroke();
+  }
+  function collideRect(px,py,rx,ry,rw,rh){ return px>rx && px<rx+rw && py>ry && py<ry+rh; }
+  function step(){
+    if(done) return; draw();
+    const sp=2.2; let nx=p.x, ny=p.y;
+    if(k.ArrowLeft) nx-=sp; if(k.ArrowRight) nx+=sp; if(k.ArrowUp) ny-=sp; if(k.ArrowDown) ny+=sp;
+    // colisão com "escada"
+    if(!(nx>stairs1.x && nx<stairs1.x+stairs1.w && ny>stairs1.y && ny<stairs1.y+stairs1.h)){ p.x=nx; p.y=ny; }
+    // bonificação por usar rampa (passar por cima da rampa)
+    if(Math.abs((p.y- ramp.y) + (p.x - ramp.x)*Math.tan(ramp.angle*Math.PI/180))<20 && p.x>ramp.x && p.x<ramp.x+ramp.w) {
+      // ok
+    } else {
+      // se tentar "subir escada", perde pontos
+      if(p.x>stairs1.x-6 && p.x<stairs1.x+stairs1.w+6 && p.y>stairs1.y-6 && p.y<stairs1.y+stairs1.h+6){
+        pts = Math.max(0, pts-10);
+      }
+    }
+    if(collideRect(p.x,p.y,goal.x,goal.y,goal.w,goal.h)){ done=true; q('#btnEndWheel').disabled=false; }
+    if(!done) requestAnimationFrame(step);
+  }
+  step();
+  q('#btnEndWheel').onclick=()=>{
+    addScore(pts); closeMission();
+    G.missionState.m4=true; nextObjective();
+    showDialog({avatar:'👩‍🦽',title:'Obrigada!',who:'Ana',text:`Você escolheu caminhos acessíveis. Pontos: <b>${pts}</b>. Agora mais duas curtas: <b>Etiqueta Inclusiva</b> e <b>Revisão Final</b>. Para abrir, fale com qualquer personagem novamente.`});
+  };
+}
+
+/* =========================
+   MISSÃO 5 — ETIQUETA INCLUSIVA
+========================= */
+function mission_etiqueta(){
+  const rows = [
+    {ok:'Perguntar como ajudar.', bad:'Fazer por ela sem perguntar.'},
+    {ok:'Usar linguagem respeitosa.', bad:'Apelidos ofensivos.'},
+    {ok:'Oferecer acessos (rampa/elevador).', bad:'Ignorar barreiras.'}
+  ];
+  let pts=40;
+  showMission(`
+    <div class="row"><h3>🤝 Etiqueta Inclusiva — Escolha a melhor atitude</h3><div class="chips" style="margin-left:auto"><span class="chip">Máx <b>${pts} pts</b> (erros -10)</span></div></div>
+    <div class="choices">
+      ${rows.map((r,i)=>`
+        <button class="choice ok" data-i="${i}">✔️ ${r.ok}</button>
+        <button class="choice bad" data-i="${i}">❌ ${r.bad}</button>
+      `).join('')}
+    </div>
+    <div class="cta" style="justify-content:flex-end"><button class="btn" id="btnEtiOk">Concluir</button></div>
+  `);
+  let selected = new Set();
+  qAll('.choice').forEach(btn=>btn.onclick=()=>{
+    const i=btn.dataset.i;
+    // zera seleções daquele par
+    qAll(`.choice[data-i="${i}"]`).forEach(b=>{b.style.outline=''; b.dataset.sel='';});
+    btn.style.outline='2px solid var(--brand)'; btn.dataset.sel='1';
+    selected.add(i);
+  });
+  q('#btnEtiOk').onclick=()=>{
+    let wrong=0;
+    rows.forEach((_r,i)=>{
+      const okSel = q(`.choice.ok[data-i="${i}"]`).dataset.sel==='1';
+      if(!okSel){ wrong++; pts=Math.max(0,pts-10); }
+    });
+    addScore(pts); closeMission();
+    G.missionState.m5=true; nextObjective();
+    showDialog({avatar:'🙂', title:'Boa!', who:G.player.name, text:`Escolhas registradas. Pontos: <b>${pts}</b>. Falta a <b>Revisão Final</b>.`});
+  };
+}
+
+/* =========================
+   MISSÃO 6 — REVISÃO FINAL (V/F)
+========================= */
+function mission_revisao(){
+  const items = [
+    {t:'Deficiência é doença.', v:false},
+    {t:'Acessibilidade é direito.', v:true},
+    {t:'Pedir preferência da pessoa é respeitoso.', v:true},
+    {t:'Rir de limitações é aceitável.', v:false},
+    {t:'Tecnologia assistiva ajuda na autonomia.', v:true},
+  ];
+  let pts=60;
+  showMission(`
+    <div class="row"><h3>📘 Revisão Final — Verdadeiro ou Falso</h3><div class="chips" style="margin-left:auto"><span class="chip">Máx <b>${pts} pts</b> (erros -10)</span></div></div>
+    <div class="choices" style="grid-template-columns:1fr">
+      ${items.map((it,i)=>`
+        <div class="choice" style="display:flex;justify-content:space-between;gap:10px">
+           <span>${i+1}. ${it.t}</span>
+           <span><button class="choice btnV" data-i="${i}">V</button>
+                 <button class="choice btnF" data-i="${i}">F</button></span>
+        </div>
+      `).join('')}
+    </div>
+    <div class="cta" style="justify-content:flex-end"><button class="btn" id="btnRevOk">Finalizar Jogo</button></div>
+  `);
+  let ans = {};
+  qAll('.btnV').forEach(b=>b.onclick=()=>{ ans[b.dataset.i]=true; shade(b); });
+  qAll('.btnF').forEach(b=>b.onclick=()=>{ ans[b.dataset.i]=false; shade(b); });
+  function shade(btn){
+    const i=btn.dataset.i;
+    qAll(`.btnV[data-i="${i}"], .btnF[data-i="${i}"]`).forEach(x=>x.style.outline='');
+    btn.style.outline='2px solid var(--brand)';
+  }
+  q('#btnRevOk').onclick=()=>{
+    items.forEach((it,i)=>{ if(ans[i]!==it.v) pts=Math.max(0, pts-10); });
+    addScore(pts); closeMission();
+    G.missionState.m6=true;
+    endGame();
+  };
+}
+
+/* =========================
+   FINALIZAÇÃO / RANKING
+========================= */
+function endGame(){
+  const sum = G.player.score;
+  // salva em localStorage
+  const key='spcd-ranking';
+  const arr = JSON.parse(localStorage.getItem(key) || '[]');
+  arr.push({nome:G.player.name, turma:G.player.turma, pontos:sum, ts:Date.now()});
+  arr.sort((a,b)=> b.pontos - a.pontos || a.ts - b.ts);
+  localStorage.setItem(key, JSON.stringify(arr.slice(0,100))); // limita 100 registros
+
+  // render ranking
+  const list = q('#rankList'); list.innerHTML='';
+  arr.forEach((p,i)=>{
+    const medal = i===0?'🥇': i===1?'🥈': i===2?'🥉':'';
+    const cls = i===0?'gold': i===1?'silver': i===2?'bronze':'';
+    const div = document.createElement('div');
+    div.className='rank-item';
+    div.innerHTML = `
+      <div><span class="medal ${cls}">${medal}</span> <b>${i+1}º</b> — ${p.nome} <span class="hint">(${p.turma})</span></div>
+      <div><b>${p.pontos} pts</b></div>
+    `;
+    list.appendChild(div);
+  });
+
+  q('#rank').classList.add('active');
+  showDialog({
+    avatar:'🏆', title:'Parabéns!', who:'Mensagem Final',
+    text:`Inclusão não é doença — é <b>condição humana</b>. Acolher, adaptar e respeitar é construir um mundo melhor. <br> Sua pontuação: <b>${sum} pts</b>.`
+  });
+
+  q('#btnPlayAgain').onclick=()=>{ location.reload(); };
+}
+
+/* =========================
+   AJUDA: utilitários e rotas
+========================= */
+function qAll(sel){ return Array.from(document.querySelectorAll(sel)); }
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+// **Missões extras podem ser abertas falando com qualquer NPC após m4**
+document.addEventListener('keydown', (e)=>{
+  if(e.key==='m' && !q('#mission').classList.contains('active') && !q('#rank').classList.contains('active')){
+    // tecla secreta para abrir missão 5/6 se ainda não feitas (facilita demonstração)
+    if(!G.missionState.m5) mission_etiqueta();
+    else if(!G.missionState.m6) mission_revisao();
+  }
+});
+// Também abrimos as extras automaticamente quando falar com um NPC após m4:
+document.addEventListener('click', ()=>{
+  if(G.missionState.m4 && !G.missionState.m5 && !q('#mission').classList.contains('active')) mission_etiqueta();
+  else if(G.missionState.m5 && !G.missionState.m6 && !q('#mission').classList.contains('active')) mission_revisao();
+});
+</script>
+</body>
+</html>
